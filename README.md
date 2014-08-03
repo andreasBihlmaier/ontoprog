@@ -4,6 +4,8 @@ Some *Relations* correspond to features already hard-coded into OOP languages, t
 | SUMO relation | OOP construct | Comment |
 | --- | --- | --- |
 | subclass, subrelation | (Multiple-)Inheritance between classes | |
-| domain | Classes/Types | domainSubclass is handled by inheritance/polymorphism |
+| domain, range | Classes/Types | {domain,range}Subclass is handled by inheritance/polymorphism |
 | instance-of | Objects | | 
 | documentation | Doxygen comment | |
+| equal | equality operator | Overloaded `==` operator, `equals` otherwise |
+| valence | Function/Method signature | |
