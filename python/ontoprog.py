@@ -41,7 +41,7 @@ class SUOKIFPart(object):
     lines = string.split('\n')
     lines = [line.strip() for line in lines]
     lines = self.consume_name(lines)
-    lines = [line.strip() for line in lines if line and not line.startswith(';;')]
+    lines = [line.strip() for line in lines if line and not line.startswith(';')]
     while lines:
       lines = self.consume_item(lines)
 
@@ -56,16 +56,19 @@ class SUOKIFPart(object):
 
 
   def consume_item(self, lines):
-    # TODO do not count parenthesis within quotes
+    quoted = False
     parenthesis_count = 0
     item_string = ''
     for (line_index, line) in enumerate(lines):
       for char in line:
         item_string += char
-        if char == '(':
-          parenthesis_count += 1
-        elif char == ')':
-          parenthesis_count -= 1
+        if not quoted:
+          if char == '(':
+            parenthesis_count += 1
+          elif char == ')':
+            parenthesis_count -= 1
+        if char == '"':
+          quoted = not quoted
       if parenthesis_count == 0:
         break
       else:
