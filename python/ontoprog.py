@@ -135,7 +135,7 @@ class SUOKIFParser(object):
 
   def plot_to_file(self, plot_filename):
     import pygraphviz as pgv
-    graph = pgv.AGraph(directed=True)
+    graph = pgv.AGraph(directed=True, page='100')
     self.plot(graph)
     graph.draw(plot_filename, prog='dot')
 
@@ -156,7 +156,7 @@ def main():
 
   parser = SUOKIFParser()
   parser.parse(args.kifs)
-  parser.plot_to_file('/tmp/kifs.pdf')
+  parser.plot_to_file('/tmp/kifs.ps')
 
 
 if __name__ == '__main__':
