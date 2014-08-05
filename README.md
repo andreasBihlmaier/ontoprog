@@ -14,7 +14,7 @@ Furthermore, instead of color being a tuple of numbers (Int or Float? RGB or BGR
 
 This does not imply a specific implementation, instead the specific implementations have a *common semantic interpretation*.
 Conversions for different low-level representations can be provided.
-The semantic grounding (and tools making use of it) helps to ensure compatibility and to reason about code on the level of content, instead of types only.
+The semantic grounding (and tools making use of it) helps to ensure compatibility and to reason about code on the level of content, instead of only reasoning on the level of types.
 
 Now, instead of postulating yet another ad hoc ontology, ontoprog relies on the broadly discussed (and accepted) [Suggested Upper Merged Ontology (SUMO)](http://ontologyportal.org/).
 
@@ -22,7 +22,7 @@ Now, instead of postulating yet another ad hoc ontology, ontoprog relies on the 
 * What about performance and memory footprint (think embedded systems)? My assessment: Feasible, i.e. low for most cases.
 * Advantages?
     * Less ad hoc library ontologies to understand (within a specific language and between languages)
-    * Advanced introspection and debugging capabilities (Imagine what could be deduced (by programmer or machine) if an error no longer occurs in object0x2342, but rather in [*GraphNode*3](http://sigma-01.cim3.net:8080/sigma/Browse.jsp?lang=ArabicLanguage&flang=SUO-KIF&kb=SUMO&term=GraphNode))
+    * Advanced introspection and debugging capabilities (Imagine what could be deduced (by programmer or machine) if an error no longer occurs in object0x2342, but rather in [*GraphNode*](http://sigma-01.cim3.net:8080/sigma/Browse.jsp?lang=ArabicLanguage&flang=SUO-KIF&kb=SUMO&term=GraphNode)3)
     * Free serialization, databases connectivity and protocols
     * Future: Automatic mappings between libraries. Automatic software and hardware integration (semantic driver interfaces + semantically annotated microcontroller ports).
 * How is this different from semantic web technologies? The point is to integrate semantic information at the programming language level. Put differently: The semantic web should be programmed in semantic programming languages. In yet another perspective: Once every object already has semantic information associated to it, there is no extra effort required to provide this information along with the objects payload on the web.
