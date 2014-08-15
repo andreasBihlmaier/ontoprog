@@ -5,10 +5,20 @@ from __future__ import print_function
 import sys
 import re
 import os
+import errno
 import argparse
 import pyparsing
 import collections
 
+
+def mkdir_p(path):
+  try:
+    os.makedirs(path)
+  except OSError as exc:
+    if exc.errno == errno.EEXIST and os.path.isdir(path):
+      pass
+    else:
+      raise
 
 
 
@@ -21,6 +31,58 @@ class SUOKIFEntity(object):
     graph.add_node(self.name)
     for parent in self.parents:
       graph.add_edge(self.name, parent, label='parent')
+
+  def to_cpp(self, directory):
+    header_str = ""
+    include_guard_name = self.name.upper() + '_H'
+    header_str += '#ifndef %s\n' % include_guard_name
+    header_str += '#define %s\n' % include_guard_name
+    header_str += '\n'
+    header_str += '#include <string>\n'
+    header_str += '\n'
+    for parent in self.parents:
+      header_str += '#include <%s.hpp>\n' % parent
+    header_str += '\n'
+    header_str += 'class %s\n' % self.name
+    if self.parents:
+      header_str += ' :public ' + self.parents[0] + (',' if len(self.parents) > 1 else '') + '\n'
+      for (parent_idx, parent) in enumerate(self.parents[1:]):
+        header_str += '  public ' + parent + (',' if len(self.parents) > (2+parent_idx) else '') + '\n'
+    header_str += '{\n'
+    header_str += '  public:\n'
+    header_str += '    static const std::string ontoname;\n'
+    header_str += '\n'
+    header_str += '    %s();\n' % self.name
+    header_str += '\n'
+    header_str += '  protected:\n'
+    header_str += '\n'
+    header_str += '  private:\n'
+    header_str += '};\n'
+    header_str += '\n'
+    header_str += '#endif // %s\n' % include_guard_name
+    header_file = open(directory + '/include/' + self.name + '.hpp', 'w')
+    header_file.write(header_str)
+    header_file.close()
+
+    source_str = ''
+    source_str += '#include <%s.hpp>\n' % self.name
+    source_str += '\n'
+    source_str += '\n'
+    source_str += '/* public */\n'
+    source_str += 'const std::string %s::ontoname("%s");\n' % (self.name, self.name)
+    source_str += '\n'
+    source_str += '%s::%s()\n' % (self.name, self.name)
+    source_str += '{\n'
+    source_str += '}\n'
+    source_str += '\n'
+    source_str += '\n'
+    source_str += '/* protected */\n'
+    source_str += '\n'
+    source_str += '\n'
+    source_str += '/* private */\n'
+    source_file = open(directory + '/src/' + self.name + '.cpp', 'w')
+    source_file.write(source_str)
+    source_file.close()
 
 
 
@@ -107,6 +169,10 @@ class SUOKIFPart(object):
       self.entities[child] = SUOKIFEntity(child, parent_list)
 
 
+  def to_cpp(self, directory):
+    for entity_name in self.entities:
+      self.entities[entity_name].to_cpp(directory)
+
 
 
 
@@ -116,6 +182,10 @@ class SUOKIFParser(object):
 
 
   def parse(self, kifs):
+    entity_part = SUOKIFPart('ENTITY')
+    entity_part.entities['Entity'] = SUOKIFEntity('Entity')
+    self.ontology_parts.append(entity_part)
+
     for (kif_index, kif) in enumerate(kifs):
       kif_file = open(kif, 'r')
       kif_parts = []
@@ -130,7 +200,8 @@ class SUOKIFParser(object):
         kif_parts.append(kif_part)
       kif_file.close()
       for (kif_part_index, kif_part) in enumerate(kif_parts):
-        self.ontology_parts.append(SUOKIFPart(os.path.basename(kif) + '_' + str(kif_part_index), string=kif_part))
+        part_name = os.path.basename(kif).rstrip('.kif') + ('_' + str(kif_part_index) if kif_part_index != 0 else '')
+        self.ontology_parts.append(SUOKIFPart(part_name, string=kif_part))
 
 
   def plot_to_file(self, plot_filename):
@@ -145,6 +216,13 @@ class SUOKIFParser(object):
       onto_part.plot(graph)
 
 
+  def to_cpp(self, directory):
+    mkdir_p(directory + '/include')
+    mkdir_p(directory + '/src')
+    for onto_part in self.ontology_parts:
+      onto_part.to_cpp(directory)
+
+
 
 
 
@@ -156,7 +234,8 @@ def main():
 
   parser = SUOKIFParser()
   parser.parse(args.kifs)
-  parser.plot_to_file('/tmp/kifs.ps')
+  #parser.plot_to_file('/tmp/kifs.ps')
+  parser.to_cpp('/tmp/ontoprog/cpp')
 
 
 if __name__ == '__main__':
