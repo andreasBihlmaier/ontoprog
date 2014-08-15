@@ -23,16 +23,41 @@ def mkdir_p(path):
 
 
 class SUOKIFEntity(object):
-  def __init__(self, name, parents = []):
+  def __init__(self, parent_part, name):
+    self.parent_part = parent_part
     self.name = name
-    self.parents = parents
+    self.superclasses = {}
+    self.subclasses = {}
+    self.ancestors = {}
+
+
+  def add_superclasses_by_name(self, superclass_names):
+    for superclass_name in superclass_names:
+      print('%s adding superclass %s' % (self.name, superclass_name))
+      print('superclasses before:', self.superclasses)
+      if not superclass_name in self.parent_part.parent_ontology.entities:
+        superclass = SUOKIFEntity(self.parent_part, superclass_name)
+        self.parent_part.parent_ontology.entities[superclass_name] = superclass
+        self.parent_part.entities[superclass_name] = superclass
+      superclass = self.parent_part.parent_ontology.entities[superclass_name]
+      self.superclasses[superclass_name] = superclass
+
+
+  def build_graph(self):
+    for superclass_key in self.superclasses:
+      pass
+      #superclass = self.superclasses[superclass_key]
+      #superclass.add_subclass(self.name)
+
 
   def plot(self, graph):
     graph.add_node(self.name)
-    for parent in self.parents:
-      graph.add_edge(self.name, parent, label='parent')
+    for superclass_key in self.superclasses:
+      graph.add_edge(self.name, self.superclasses[superclass_key].name, label='superclass')
 
   def to_cpp(self, directory):
+    print('name: ', self.name)
+    print('superclasses: ', self.superclasses)
     header_str = ""
     include_guard_name = self.name.upper() + '_H'
     header_str += '#ifndef %s\n' % include_guard_name
@@ -40,21 +65,18 @@ class SUOKIFEntity(object):
     header_str += '\n'
     header_str += '#include <string>\n'
     header_str += '#include <vector>\n'
+    header_str += '#include <unordered_set>\n'
     header_str += '\n'
-    for parent in self.parents:
-      header_str += '#include <%s.hpp>\n' % parent
+    for superclass_key in self.superclasses:
+      header_str += '#include <%s.hpp>\n' % self.superclasses[superclass_key].name
     header_str += '\n'
-    header_str += 'class %s\n' % self.name
-    if self.parents:
-      header_str += ' :public ' + self.parents[0] + (',' if len(self.parents) > 1 else '') + '\n'
-      for (parent_idx, parent) in enumerate(self.parents[1:]):
-        header_str += '  public ' + parent + (',' if len(self.parents) > (2+parent_idx) else '') + '\n'
+    header_str += 'class %s%s\n' % (self.name, ':' if self.superclasses else '')
+    for (superclass_idx, superclass_key) in enumerate(self.superclasses):
+      header_str += '  public ' + self.superclasses[superclass_key].name + (',' if len(self.superclasses) > (1+superclass_idx) else '') + '\n'
     header_str += '{\n'
     header_str += '  public:\n'
     header_str += '    static const std::string ontoname;\n'
-    header_str += '\n'
-    header_str += '    static std::vector<std::string> superclasses();\n'
-    header_str += '    static void superclasses(std::vector<std::string>& superclass_vec);\n'
+    header_str += '    static const std::unordered_set<std::string> superclasses;\n'
     header_str += '\n'
     header_str += '    %s();\n' % self.name
     header_str += '\n'
@@ -77,25 +99,8 @@ class SUOKIFEntity(object):
     source_str += '\n'
     source_str += '\n'
     source_str += '/* public */\n'
-    source_str += 'const std::string %s::ontoname("%s");\n' % (self.name, self.name)
-    source_str += '\n'
-    source_str += 'void\n'
-    source_str += '%s::superclasses(std::vector<std::string>& superclass_vec)\n' % self.name
-    source_str += '{\n'
-    source_str += '  if (std::find(superclass_vec.begin(), superclass_vec.end(), %s::ontoname) == superclass_vec.end()) {\n' % self.name
-    source_str += '    superclass_vec.push_back(%s::ontoname);\n' % self.name
-    for parent in self.parents:
-      source_str += '    %s::superclasses(superclass_vec);\n' % parent
-    source_str += '  }\n'
-    source_str += '}\n'
-    source_str += '\n'
-    source_str += 'std::vector<std::string>\n'
-    source_str += '%s::superclasses()\n' % self.name
-    source_str += '{\n'
-    source_str += '  std::vector<std::string> superclass_vec;\n'
-    source_str += '  %s::superclasses(superclass_vec);\n' % self.name
-    source_str += '  return superclass_vec;\n'
-    source_str += '}\n'
+    source_str += 'const std::string %s::ontoname{"%s"};\n' % (self.name, self.name)
+    source_str += 'const std::unordered_set<std::string> %s::superclasses{%s};\n' % (self.name, ', '.join(['"%s"' % ancestor.name for ancestor in self.ancestors]))
     source_str += '\n'
     source_str += '\n'
     source_str += '%s::%s()\n' % (self.name, self.name)
@@ -117,13 +122,18 @@ class SUOKIFEntity(object):
 
 
 class SUOKIFPart(object):
-  def __init__(self, name, **kwargs):
+  def __init__(self, parent_ontology, name, **kwargs):
+    self.parent_ontology = parent_ontology
     self.entities = {}
     self.name = name
     self.name_re = re.compile(r'^;;\s+?(.*)\s+?;;$')
 
     if 'string' in kwargs:
       self.from_string(kwargs['string'])
+
+
+  def build_graph(self):
+    pass
 
 
   def plot(self, graph):
@@ -187,15 +197,16 @@ class SUOKIFPart(object):
       self.add_subclass(args[0], args[1])
 
 
-  def add_subclass(self, child, parent):
-    if isinstance(parent, str): # parent is either a str or a sequence of str
-      parent_list = [parent]
+  def add_subclass(self, child_name, superclass_name):
+    if isinstance(superclass_name, str): # superclass_name is either a str or a sequence of str
+      superclass_name_list = [superclass_name]
     else:
-      parent_list = [p for p in parent]
-    if child in self.entities:
-        self.entities[child].parents.extend(parent_list)
-    else:
-      self.entities[child] = SUOKIFEntity(child, parent_list)
+      superclass_name_list = [p for p in superclass_name]
+    if not child_name in self.parent_ontology.entities:
+      child = SUOKIFEntity(self, child_name)
+      self.parent_ontology.entities[child_name] = child
+      self.entities[child_name] = child
+    self.parent_ontology.entities[child_name].add_superclasses_by_name(superclass_name_list)
 
 
   def to_cpp(self, directory):
@@ -208,11 +219,13 @@ class SUOKIFPart(object):
 class SUOKIFParser(object):
   def __init__(self):
     self.ontology_parts = []
+    self.entities = {}
 
 
   def parse(self, kifs):
-    entity_part = SUOKIFPart('ENTITY')
-    entity_part.entities['Entity'] = SUOKIFEntity('Entity')
+    entity_part = SUOKIFPart(self, 'ENTITY')
+    self.entities['Entity'] = SUOKIFEntity(entity_part, 'Entity')
+    entity_part.entities['Entity'] = self.entities['Entity']
     self.ontology_parts.append(entity_part)
 
     for (kif_index, kif) in enumerate(kifs):
@@ -230,7 +243,10 @@ class SUOKIFParser(object):
       kif_file.close()
       for (kif_part_index, kif_part) in enumerate(kif_parts):
         part_name = os.path.basename(kif).rstrip('.kif') + ('_' + str(kif_part_index) if kif_part_index != 0 else '')
-        self.ontology_parts.append(SUOKIFPart(part_name, string=kif_part))
+        self.ontology_parts.append(SUOKIFPart(self, part_name, string=kif_part))
+
+    for onto_part in self.ontology_parts:
+      onto_part.build_graph()
 
 
   def plot_to_file(self, plot_filename):

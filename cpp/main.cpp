@@ -9,8 +9,7 @@ int main()
   std::cout << Government::ontoname << std::endl;
 
   std::cout << "superclasses():" << std::endl;
-  auto superclasses = Government::superclasses();
-  for (auto superclass : superclasses) {
+  for (auto superclass : Government::superclasses) {
     std::cout << superclass << std::endl;
   }
 
