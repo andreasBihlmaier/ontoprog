@@ -39,6 +39,7 @@ class SUOKIFEntity(object):
     header_str += '#define %s\n' % include_guard_name
     header_str += '\n'
     header_str += '#include <string>\n'
+    header_str += '#include <vector>\n'
     header_str += '\n'
     for parent in self.parents:
       header_str += '#include <%s.hpp>\n' % parent
@@ -52,9 +53,14 @@ class SUOKIFEntity(object):
     header_str += '  public:\n'
     header_str += '    static const std::string ontoname;\n'
     header_str += '\n'
+    header_str += '    static std::vector<std::string> superclasses();\n'
+    header_str += '    static void superclasses(std::vector<std::string>& superclass_vec);\n'
+    header_str += '\n'
     header_str += '    %s();\n' % self.name
     header_str += '\n'
+    header_str += '\n'
     header_str += '  protected:\n'
+    header_str += '\n'
     header_str += '\n'
     header_str += '  private:\n'
     header_str += '};\n'
@@ -65,18 +71,41 @@ class SUOKIFEntity(object):
     header_file.close()
 
     source_str = ''
+    source_str += '#include <algorithm>\n'
+    source_str += '\n'
     source_str += '#include <%s.hpp>\n' % self.name
     source_str += '\n'
     source_str += '\n'
     source_str += '/* public */\n'
     source_str += 'const std::string %s::ontoname("%s");\n' % (self.name, self.name)
     source_str += '\n'
+    source_str += 'void\n'
+    source_str += '%s::superclasses(std::vector<std::string>& superclass_vec)\n' % self.name
+    source_str += '{\n'
+    source_str += '  if (std::find(superclass_vec.begin(), superclass_vec.end(), %s::ontoname) == superclass_vec.end()) {\n' % self.name
+    source_str += '    superclass_vec.push_back(%s::ontoname);\n' % self.name
+    for parent in self.parents:
+      source_str += '    %s::superclasses(superclass_vec);\n' % parent
+    source_str += '  }\n'
+    source_str += '}\n'
+    source_str += '\n'
+    source_str += 'std::vector<std::string>\n'
+    source_str += '%s::superclasses()\n' % self.name
+    source_str += '{\n'
+    source_str += '  std::vector<std::string> superclass_vec;\n'
+    source_str += '  %s::superclasses(superclass_vec);\n' % self.name
+    source_str += '  return superclass_vec;\n'
+    source_str += '}\n'
+    source_str += '\n'
+    source_str += '\n'
     source_str += '%s::%s()\n' % (self.name, self.name)
     source_str += '{\n'
     source_str += '}\n'
     source_str += '\n'
     source_str += '\n'
+    source_str += '\n'
     source_str += '/* protected */\n'
+    source_str += '\n'
     source_str += '\n'
     source_str += '\n'
     source_str += '/* private */\n'
